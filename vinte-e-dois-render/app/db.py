@@ -59,6 +59,7 @@ class LedgerEntry(Base):
 class Event(Base):
     __tablename__ = "events"
     id = Column(Integer, primary_key=True)
+    ext_id = Column(String(32), unique=True, nullable=True)
     kind = Column(String(12))
     title = Column(String(200))
     league = Column(String(120), default="")

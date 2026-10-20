@@ -19,6 +19,7 @@ from .db import (
 )
 from . import engine as eng
 from . import pix
+from . import fixtures
 
 Base.metadata.create_all(engine)
 app = FastAPI(title="Vinte e Dois Bet")
@@ -567,6 +568,104 @@ def admin_login(b: AdminLoginIn, response: Response):
         raise HTTPException(401, "senha errada")
     response.set_cookie("adm", _sign("admin", adm), httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7)
     return {"ok": True}
+
+
+FOOT_MARKET_SPECS = [("1X2", "Resultado (90 min)", [("H", "Casa"), ("D", "Empate"), ("A", "Fora")], 0.06),
+                     ("OU25", "Mais/Menos 2.5 gols", [("O", "Mais 2.5"), ("U", "Menos 2.5")], 0.065),
+                     ("ACG", "Ambas marcam", [("SIM", "Sim"), ("NAO", "Não")], 0.065)]
+
+
+def _create_football_markets(db: Session, e: Event):
+    for key, mt, outs, mg in FOOT_MARKET_SPECS:
+        m = Market(event_id=e.id, key=key, title=mt, margin=mg)
+        db.add(m)
+        db.flush()
+        for lab, lbl in outs:
+            db.add(Outcome(market_id=m.id, label=lab, odd=2.0))
+        db.flush()
+        reprice_market(db, e, m)
+
+
+def _bootstrap_sync():
+    """Casa nao abre vazia: se nao ha eventos de futebol, importa o calendario real."""
+    d = SessionLocal()
+    try:
+        if d.query(Event).filter(Event.kind == "FOOTBALL").count() > 0:
+            return
+        print("[bootstrap] casa vazia — importando calendario real (dias=7)", flush=True)
+        now = utcnow()
+        now_ts = int(now.timestamp())
+        created = 0
+        for i in range(7):
+            ds = (now + timedelta(days=i)).strftime("%Y-%m-%d")
+            evs, fonte, err = fixtures.fetch_day(ds)
+            if err:
+                continue
+            for ev in evs[:40]:
+                ts = ev.get("ts") or 0
+                if ts < now_ts - 1800:
+                    continue
+                if d.query(Event).filter(Event.ext_id == ev["ext_id"]).first():
+                    continue
+                xgh, xga = fixtures.xg_for(ev.get("slug", ""), ev.get("league", ""), ev["ext_id"])
+                e = Event(kind="FOOTBALL", title=ev["title"][:200], league=(ev.get("league") or "")[:120],
+                          starts_at=datetime.fromtimestamp(ts), ext_id=ev["ext_id"],
+                          xg_home=xgh, xg_away=xga)
+                d.add(e)
+                d.commit()
+                _create_football_markets(d, e)
+                created += 1
+        print(f"[bootstrap] {created} eventos importados da fonte", flush=True)
+    except Exception as ex:
+        print("[bootstrap] falha:", type(ex).__name__, str(ex)[:200], flush=True)
+    finally:
+        d.close()
+
+
+@app.on_event("startup")
+def _bootstrap_kickoff():
+    import threading
+    threading.Thread(target=_bootstrap_sync, daemon=True).start()
+
+
+class SyncIn(BaseModel):
+    days: int = 7
+
+
+@app.post("/api/admin/sync-fixtures")
+def admin_sync_fixtures(b: SyncIn, request: Request, db: Session = Depends(get_db)):
+    require_admin_from(request)
+    days = max(1, min(int(b.days or 7), 14))
+    created = skipped = 0
+    errors, fontes = [], []
+    now = utcnow()
+    now_ts = int(now.timestamp())
+    for i in range(days):
+        ds = (now + timedelta(days=i)).strftime("%Y-%m-%d")
+        evs, fonte, err = fixtures.fetch_day(ds)
+        if err:
+            errors.append(ds + ": " + err[:140])
+            continue
+        fontes.append(fonte)
+        for ev in evs[:40]:
+            ts = ev.get("ts") or 0
+            if ts < now_ts - 1800:
+                continue
+            if db.query(Event).filter(Event.ext_id == ev["ext_id"]).first():
+                skipped += 1
+                continue
+            xgh, xga = fixtures.xg_for(ev.get("slug", ""), ev.get("league", ""), ev["ext_id"])
+            e = Event(kind="FOOTBALL", title=ev["title"][:200], league=(ev.get("league") or "")[:120],
+                      starts_at=datetime.fromtimestamp(ts), ext_id=ev["ext_id"],
+                      xg_home=xgh, xg_away=xga)
+            db.add(e)
+            db.commit()
+            _create_football_markets(db, e)
+            created += 1
+    if created == 0 and skipped == 0 and errors:
+        raise HTTPException(400, "nenhuma fonte respondeu agora — " + errors[0])
+    return {"ok": True, "created": created, "skipped_existing": skipped,
+            "sources": sorted(set(fontes)), "errors": errors[:4]}
 
 
 # ---------- demo: casa não nasce vazia ----------

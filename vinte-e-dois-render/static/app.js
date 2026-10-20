@@ -15,6 +15,9 @@ async function me(){try{return await api("/api/me")}catch(e){return null}}
 (function(){var d=document.getElementById("aBd");if(d){var p=function(n){return String(n).padStart(2,"0")};
 var t=new Date();d.min=(t.getFullYear()-100)+"-"+p(t.getMonth()+1)+"-"+p(t.getDate());
 var m=new Date();m.setFullYear(m.getFullYear()-18);d.max=m.getFullYear()+"-"+p(m.getMonth()+1)+"-"+p(m.getDate());}})();
+(function(){var el=document.getElementById("aBd");if(el){el.placeholder="dd/mm/aaaa";
+el.addEventListener("input",function(){var t=el.value.replace(/\D/g,"").slice(0,8);
+var o=t.slice(0,2);if(t.length>2)o+="/"+t.slice(2,4);if(t.length>4)o+="/"+t.slice(4);el.value=o;});}})();
 async function boot(){
   const u=await me();
   if(!u){$("#auth").classList.remove("hide");
@@ -40,7 +43,11 @@ $("#aBtn").onclick=async()=>{
     if(!$("#aName").value.trim())return err("informe seu nome");
     if(cpf.length!==11)return err("CPF incompleto — precisa dos 11 números");
     if(!bd)return err("informe sua data de nascimento");
-    const age=Math.floor((Date.now()-new Date(bd+"T00:00:00"))/(365.25*864e5));
+    if(/^\d{4}-\d{2}-\d{2}$/.test(bd)){const pp=bd.split("-");bd=pp[2]+"/"+pp[1]+"/"+pp[0];}
+    if(!/^\d{2}\/\d{2}\/\d{4}$/.test(bd))return err("a data precisa estar no formato dd/mm/aaaa");
+    const dpv=bd.split("/").map(Number);const dtp=new Date(dpv[2],dpv[1]-1,dpv[0]);
+    if(dtp.getFullYear()!==dpv[2]||dtp.getMonth()!==dpv[1]-1||dtp.getDate()!==dpv[0])return err("essa data não existe");
+    const age=Math.floor((Date.now()-new Date(dpv[2]+"-"+String(dpv[1]).padStart(2,"0")+"-"+String(dpv[0]).padStart(2,"0")))/(365.25*864e5));
     if(isNaN(age)||age<18)return err("é preciso ter 18 anos ou mais");
     if(age>100)return err("confira a data de nascimento");
     if(pass.length<6)return err("senha curta — mínimo 6 caracteres");
@@ -75,7 +82,7 @@ async function renderTab(){
   }catch(e){v.innerHTML='<div class="empty">'+e.message+'</div>'}
 }
 function evCard(e){
-  const badge=e.status==="LIVE"?'<span class="liv">● AO VIVO</span>':'<span class="pre">'+(e.starts_at?new Date(e.starts_at).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"em breve")+'</span>';
+  const badge=e.status==="LIVE"?'<span class="liv">● AO VIVO</span>':'<span class="pre">'+(e.starts_at?new Date(String(e.starts_at).replace(" ","T")+"Z").toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"em breve")+'</span>';
   return '<div class="ev" data-ev="'+e.id+'"><div class="ev-t">'+e.title+'</div><div class="ev-s">'+(e.league?'<span>'+e.league+'</span> ':"")+badge+'</div></div>';
 }
 

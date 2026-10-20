@@ -46,13 +46,16 @@ function renderLogin(){$("#box").innerHTML=`
  <div class="row"><input id="pw" type="password" placeholder="senha"><button class="gold" onclick="doLogin()">entrar</button></div>
  <div class="msg" id="lgmsg"></div></div>`;}
 async function doLogin(){try{await api("/api/admin/login",{method:"POST",body:{password:$("#pw").value}});renderMain()}catch(e){$("#lgmsg").textContent=e.message}}
-async function seedDemo(){try{const r=await api("/api/admin/seed-demo",{method:"POST"});$("#sdmsg").textContent="ok — "+r.events+" eventos criados com odds do motor";renderMain()}catch(e){$("#sdmsg").textContent=e.message}}
+async function syncFixtures(){try{$("#sdmsg").textContent="buscando calendários… pode levar ~30s";const r=await api("/api/admin/sync-fixtures",{method:"POST",body:{days:+$("#syncDays").value||7}});$("#sdmsg").textContent="ok — "+r.created+" jogos novos · "+r.skipped_existing+" já existiam"+((r.errors&&r.errors.length)?" · fontes com erro: "+r.errors.join(" | "):"");renderMain();loadLive()}catch(e){$("#sdmsg").textContent=e.message}}
 async function renderMain(){
   const dash=await api("/api/admin/dashboard");
   $("#box").innerHTML=`
   <div class="card"><b>${dash.usuarios}</b> usuários · <b>${dash.apostas_abertas}</b> apostas abertas · exposição <b>${fmtB(Math.round(dash.exposicao_aberta_brl*100))}</b>
   <div class="msg">apostado ${fmtB(Math.round(dash.apostado_brl*100))} · pago em apostas ${fmtB(Math.round(dash.pago_brl*100))} · ${dash.rodadas_crash} rodadas de crash</div></div>
-  <div class="card"><h3>demonstração</h3><div class="row"><button class="gold" onclick="seedDemo()">GERAR JOGOS DEMO (hoje)</button></div><div class="msg" id="sdmsg">cria 6 partidas brasileiras precificadas pelo motor — funciona só se a casa estiver vazia</div></div>
+  <div class="card"><h3>calendário real (SofaScore / TheSportsDB)</h3>
+  <div class="row"><input id="syncDays" type="number" value="7" min="1" max="14" style="width:80px" title="quantos dias pra frente">
+  <button class="gold" onclick="syncFixtures()">BUSCAR JOGOS DO DIA E PRÓXIMOS DIAS</button></div>
+  <div class="msg" id="sdmsg">puxa as partidas reais (hoje + dias que você escolher), com horário e campeonato, e o motor precifica as odds sozinho. Apertar de novo só adiciona o que for novo.</div></div>
   <div class="card"><h3>nova partida (futebol)</h3>
   <div class="row"><input id="evTitle" placeholder="Flamengo x Palmeiras" style="flex:1;min-width:150px">
   <input id="evDate" type="datetime-local">
