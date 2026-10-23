@@ -911,7 +911,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         open_bets = db.query(Bet).filter(Bet.status == "OPEN").all()
         exposure = sum(b.stake_cents + (b.stake_cents / FX_USDT_BRL if b.currency == "USDT" else 0) for b in open_bets)
         won = db.query(func.sum(LedgerEntry.amount_cents)).filter(LedgerEntry.kind == "BET_WON").scalar() or 0
-        staked = -db.query(func.sum(LedgerEntry.amount_cents)).filter(LedgerEntry.kind == "BET_PLACED").scalar() or 0
+        staked = -(db.query(func.sum(LedgerEntry.amount_cents)).filter(LedgerEntry.kind == "BET_PLACED").scalar() or 0)
         rounds = db.query(func.count(GameRound.id)).scalar()
         return {"usuarios": users, "apostas_abertas": len(open_bets), "exposicao_aberta_brl": round(exposure / 100, 2),
                 "apostado_brl": round(staked / 100, 2), "pago_brl": round(won / 100, 2), "rodadas_crash": rounds}
