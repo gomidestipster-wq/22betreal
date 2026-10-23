@@ -177,5 +177,16 @@ async function resolveMkt(){
 function toast(m){const t=document.createElement("div");t.textContent=m;t.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#25c26e;color:#062;padding:10px 18px;border-radius:10px;font-weight:700;z-index:9";document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 renderLogin();
 </script>
+
+<div style="margin:10px 0;display:flex;gap:8px;align-items:center">
+  <button class="btn" onclick="dbExport()">BAIXAR BANCO</button>
+  <input type="file" id="dbFile" accept=".sqlite3,.db" style="font-size:12px">
+  <button class="btn" onclick="dbImport()">SUBIR BANCO</button>
+</div>
+<script>
+async function dbExport(){const r=await fetch('/api/admin/db/export');if(!r.ok)return alert('erro '+r.status);const b=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='vd22-db.sqlite3';a.click()}
+async function dbImport(){const f=document.getElementById('dbFile').files[0];if(!f)return alert('escolha o arquivo');if(!confirm('Substituir o banco atual por '+f.name+'?'))return;const buf=await f.arrayBuffer();const r=await fetch('/api/admin/db/import',{method:'POST',body:buf});alert(r.ok?'banco restaurado':'erro '+r.status)}
+</script>
+
 </body>
 </html>
