@@ -971,4 +971,35 @@ def deposit_status(txid: str, u: User = Depends(current_user), db: Session = Dep
     return {"status": tx.status, "balance_brl": u.balance_brl, "balance_usdt": u.balance_usdt}
 
 
+@app.get("/api/admin/db/export")
+def admin_db_export(request: Request):
+    require_admin(request)
+    ddir = os.environ.get("VDB_DATA", os.path.join(ROOT, "data"))
+    src = None
+    for cand in (os.path.join(ddir, "db.sqlite3"), os.path.join(ROOT, "data", "db.sqlite3")):
+        if os.path.exists(cand):
+            src = cand
+            break
+    if not src:
+        raise HTTPException(404, "banco nao encontrado")
+    return Response(content=open(src, "rb").read(), media_type="application/octet-stream",
+                    headers={"Content-Disposition": "attachment; filename=vd22-db.sqlite3"})
+
+
+@app.post("/api/admin/db/import")
+async def admin_db_import(request: Request):
+    require_admin(request)
+    body = await request.body()
+    if len(body) < 4000 or body[:16].find(b"SQLite") == -1:
+        raise HTTPException(400, "arquivo nao parece um sqlite valido")
+    ddir = os.environ.get("VDB_DATA", os.path.join(ROOT, "data"))
+    os.makedirs(ddir, exist_ok=True)
+    dst = os.path.join(ddir, "db.sqlite3")
+    tmp = dst + ".new"
+    open(tmp, "wb").write(body)
+    os.replace(tmp, dst)
+    engine.dispose()
+    return {"ok": True, "bytes": len(body)}
+
+
 app.mount("/", StaticFiles(directory=STATIC, html=True), name="spa")
