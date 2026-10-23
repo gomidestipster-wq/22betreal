@@ -63,7 +63,7 @@ $("#btnSair").onclick=async()=>{await fetch("/api/logout",{method:"POST"});locat
 async function refreshTop(){const u=await me();if(u)$("#bal").textContent=fmtB(u.balance_brl)+" · "+(u.balance_usdt/100).toFixed(2)+"$"}
 
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;setTab(b.dataset.tab)});
-function setTab(t){tab=t;$$("#tabs button").forEach(x=>x.classList.toggle("on",x.dataset.tab===t));clearPoll();slip=null;paintSlip();renderTab()}
+function setTab(t){tab=t;var _h=document.getElementById("hero"),_p=document.getElementById("promoRow");if(_h)_h.classList.toggle("hide",t!=="sports");if(_p)_p.classList.toggle("hide",t!=="sports");$$("#tabs button").forEach(x=>x.classList.toggle("on",x.dataset.tab===t));clearPoll();slip=null;paintSlip();renderTab()}
 function clearPoll(){if(pollEv){clearInterval(pollEv);pollEv=null}if(crashTimer){clearInterval(crashTimer);crashTimer=null}}
 
 async function renderTab(){
