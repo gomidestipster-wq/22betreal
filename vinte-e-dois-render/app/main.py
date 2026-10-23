@@ -1,6 +1,23 @@
 import json
 import hmac
 import os
+
+
+def _load_dotenv_local():
+    """Segredos da casa: .env na raiz do projeto vence variaveis do ambiente."""
+    try:
+        p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+        for line in open(p, encoding="utf-8"):
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, _, v = line.partition("=")
+            os.environ[k.strip()] = v.strip().strip('"').strip("'")
+    except FileNotFoundError:
+        pass
+
+
+_load_dotenv_local()
 import secrets
 import string
 from datetime import datetime, timedelta
