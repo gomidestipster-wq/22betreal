@@ -43,16 +43,16 @@
     <div class="hero-trust"><span>PIX instantâneo</span><i>•</i><span>USDT · Solana</span><i>•</i><span>Cashout</span><i>•</i><span>18+ · jogue com responsabilidade</span></div>
   </div>
   <div class="hero-board" aria-hidden="true">
-    <div class="hb-top"><span class="liv">● AO VIVO</span><span>min 63</span></div>
+    <div class="hb-top"><span class="liv">● AO VIVO</span><span id="hbMin">min 63</span></div>
     <div class="hb-mid">
-      <div class="hb-team">Flamengo</div>
-      <div class="hb-score">2<span>×</span>1</div>
-      <div class="hb-team end">Palmeiras</div>
+      <div class="hb-team" id="hbHome">Flamengo</div>
+      <div class="hb-score"><span id="hbSh">2</span><span>×</span><span id="hbSa">1</span></div>
+      <div class="hb-team end" id="hbAway">Palmeiras</div>
     </div>
     <div class="hb-odds">
-      <button><i>Casa</i><b>1.98</b></button>
-      <button><i>Empate</i><b>3.72</b></button>
-      <button><i>Fora</i><b>3.50</b></button>
+      <button><i>Casa</i><b id="hbO1">1.98</b></button>
+      <button><i>Empate</i><b id="hbOX">3.72</b></button>
+      <button><i>Fora</i><b id="hbO2">3.50</b></button>
     </div>
   </div>
 </section>
@@ -62,10 +62,10 @@
   <div class="promo p-b"><b>Cashout 24/7</b><span>Retire sua aposta a qualquer momento, no pré e no ao vivo.</span></div>
 </section>
 <nav id="tabs">
-  <button data-tab="sports" class="on">Jogos</button>
-  <button data-tab="live">Ao Vivo</button>
-  <button data-tab="politics">Política</button>
-  <button data-tab="casino">Cassino</button>
+  <button data-tab="sports" class="on">⚽ Jogos</button>
+  <button data-tab="live">🔴 Ao Vivo</button>
+  <button data-tab="politics">🏛️ Política</button>
+  <button data-tab="casino">🎰 Cassino</button>
 </nav>
 <main id="view"></main>
 <div id="slipbar" class="hide"></div>
@@ -88,7 +88,33 @@
   </div>
 </div>
 <div id="toast"></div>
-<script src="/app.js"></script>
+<script defer src="/app.js"></script>
+<script>
+/* cartaz do hero: quando ha jogo de futebol AO VIVO, ele mostra o jogo de verdade */
+(function(){
+  function $(id){return document.getElementById(id)}
+  function set(id,v){var el=$(id);if(el&&v!=null)el.textContent=v}
+  async function vivo(){
+    try{
+      var r=await fetch("/api/events");var evs=(await r.json())||[];
+      if(!Array.isArray(evs))evs=evs.events||[];
+      var e=evs.find(function(x){return x.kind==="FOOTBALL"&&x.status==="LIVE"});
+      if(!e)return;
+      var d=await(await fetch("/api/events/"+e.id)).json();
+      var ev=d.event||d;
+      set("hbHome",(ev.home||"").split(" - ")[0]);set("hbAway",(ev.away||"").split(" - ")[0]);
+      set("hbSh",ev.score_home!=null?ev.score_home:"-");set("hbSa",ev.score_away!=null?ev.score_away:"-");
+      if(ev.minute)set("hbMin","min "+ev.minute);
+      var mk=(d.markets||[]).find(function(m){return m.key==="1X2"});
+      if(mk){var o={};(mk.outcomes||[]).forEach(function(x){o[x.label]=x.odd});
+        set("hbO1",o.H!=null?Number(o.H).toFixed(2):"–");
+        set("hbOX",o.D!=null?Number(o.D).toFixed(2):"–");
+        set("hbO2",o.A!=null?Number(o.A).toFixed(2):"–");}
+    }catch(err){}
+  }
+  if(document.readyState!=="loading"){vivo();setInterval(vivo,60000)}else{document.addEventListener("DOMContentLoaded",function(){vivo();setInterval(vivo,60000)})}
+})();
+</script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');</script>
 </body>
 </html>
