@@ -3,21 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Vinte e Dois Bet</title>
-<meta name="theme-color" content="#00A63E">
+<title>Vinte e Dois Bet — A sua casa de apostas brasileira</title>
+<meta name="description" content="Futebol pré e ao vivo, política e cassino crash próprio. PIX instantâneo, USDT em Solana e bônus pra quem indica. 18+">
+<meta name="theme-color" content="#070B14">
+<meta property="og:title" content="VINTE E DOIS BET">
+<meta property="og:description" content="Odds com lógica. PIX na hora. 18+ Jogue com responsabilidade.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<div class="topstripe"></div>
 <header>
-  <div class="logo">22<span>BET</span></div>
+  <a class="brand" href="/">
+    <img class="brand-ic" src="/icon.svg" alt="22 BET">
+    <span class="brand-name">VINTE&nbsp;E&nbsp;DOIS<b>BET</b></span>
+  </a>
   <div class="hdr-right">
     <div id="bal" class="chip">—</div>
     <button id="btnCarteira" class="linkbtn">carteira</button>
     <button id="btnSair" class="linkbtn hide">sair</button>
   </div>
 </header>
+<section id="hero">
+  <div class="hero-copy">
+    <span class="hero-tag">🇧🇷 100% brasileira · PIX na hora</span>
+    <h1>Odds com lógica.<br><b>A casa que joga o seu jogo.</b></h1>
+    <p>Futebol pré e ao vivo, mercados de política e crash próprio, auditável e sem enrolação. Depósito em PIX instantâneo, saque em PIX ou USDT, cashout quando você mandar.</p>
+    <div class="hero-cta">
+      <button class="gold" onclick="document.getElementById('view').scrollIntoView({behavior:'smooth'})">Apostar agora</button>
+      <a class="ghostx" href="/afiliados.html" target="_blank">Indique &amp; Ganhe · R$ 50 →</a>
+    </div>
+    <div class="hero-trust"><span>PIX instantâneo</span><i>•</i><span>USDT · Solana</span><i>•</i><span>Cashout</span><i>•</i><span>18+ · jogue com responsabilidade</span></div>
+  </div>
+  <div class="hero-board" aria-hidden="true">
+    <div class="hb-top"><span class="liv">● AO VIVO</span><span>min 63</span></div>
+    <div class="hb-mid">
+      <div class="hb-team">Flamengo</div>
+      <div class="hb-score">2<span>×</span>1</div>
+      <div class="hb-team end">Palmeiras</div>
+    </div>
+    <div class="hb-odds">
+      <button><i>Casa</i><b>1.98</b></button>
+      <button><i>Empate</i><b>3.72</b></button>
+      <button><i>Fora</i><b>3.50</b></button>
+    </div>
+  </div>
+</section>
+<section id="promoRow">
+  <div class="promo p-g"><b>PIX na hora</b><span>Depósito instantâneo e saque em PIX ou USDT (Solana), sem fila.</span></div>
+  <div class="promo"><b>R$ 50 no cassino</b><span>Indique um amigo que depositar R$ 100+ → <a href="/afiliados.html" target="_blank">ver como</a>.</span></div>
+  <div class="promo p-b"><b>Cashout 24/7</b><span>Retire sua aposta a qualquer momento, no pré e no ao vivo.</span></div>
+</section>
 <nav id="tabs">
   <button data-tab="sports" class="on">Jogos</button>
   <button data-tab="live">Ao Vivo</button>
@@ -28,16 +71,18 @@
 <div id="slipbar" class="hide"></div>
 <footer>
   <div>VINTE E DOIS BET · CNPJ 67.064.999/0001-03 · 18+ · Apostar pode causar dependência e não é uma forma de renda. Jogue com responsabilidade.</div>
-  <a href="/afiliados.html" target="_blank">Indique & Ganhe · R$ 50 no cassino</a> · <a href="/console.html" target="_blank">área da casa</a>
+  <a href="/afiliados.html" target="_blank">Indique &amp; Ganhe · R$ 50 no cassino</a> · <a href="/console.html" target="_blank">área da casa</a>
 </footer>
 <div id="auth" class="overlay hide">
   <div class="card">
-    <div class="logo big">22<span>BET</span></div>
+    <div class="logo big"><img src="/icon.svg" alt="">
+      <span class="brand-name">VINTE&nbsp;E&nbsp;DOIS<b>BET</b></span>
+    </div>
     <div id="authMsg"></div>
-    <input id="aCpf" placeholder="CPF" inputmode="numeric">
+    <input id="aCpf" placeholder="CPF" inputmode="numeric" autocomplete="off">
     <input id="aBd" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" class="hide">
-    <input id="aName" placeholder="nome" class="hide">
-    <input id="aPass" type="password" placeholder="senha">
+    <input id="aName" placeholder="nome" class="hide" autocomplete="off">
+    <input id="aPass" type="password" placeholder="senha" autocomplete="current-password">
     <button id="aBtn" class="gold">entrar</button>
     <button id="aToggle" class="linkbtn">criar conta (18+)</button>
   </div>
