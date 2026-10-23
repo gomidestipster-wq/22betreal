@@ -1,12 +1,14 @@
-const C="vd22-v2";
-self.addEventListener("install",e=>self.skipWaiting());
-self.addEventListener("activate",e=>e.waitUntil((async()=>{const ks=await caches.keys();await Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)));await self.clients.claim();})()));
+const CACHE="vd22-v4";
+const CORE=["/","/index.html","/style.css","/app.js","/icon.svg","/manifest.json","/icon-192.png","/icon-512.png"];
+self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
+self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",e=>{
   const u=new URL(e.request.url);
-  if(u.pathname.startsWith("/api/")||e.request.method!=="GET")return;
-  e.respondWith(caches.open(C).then(async c=>{
-    const hit=await c.match(e.request);
-    const net=fetch(e.request).then(r=>{if(r.ok)c.put(e.request,r.clone());return r}).catch(()=>hit);
-    return hit||net;
-  }));
+  if(e.request.method!=="GET"||u.origin!==location.origin)return;
+  if(e.request.mode==="navigate"){
+    e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c));return r})
+      .catch(()=>caches.match(e.request).then(m=>m||caches.match("/"))));
+    return;
+  }
+  e.respondWith(caches.match(e.request).then(m=>m||fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c));return r})));
 });
