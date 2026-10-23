@@ -5,17 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Indique & Ganhe — VINTE E DOIS BET</title>
 <meta name="description" content="Indique um amigo, ele deposita R$ 100+ e você ganha R$ 50,00 no cassino. Sem teto, sem prazo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 :root{--bg:#06130b;--card:#0d2015;--line:#1d3c29;--txt:#eef6ef;--dim:#7fa08b;--green:#00a63e;--yellow:#ffd100;--blue:#2f7bff}
 html{color-scheme:dark}
 body{background:var(--bg);color:var(--txt);min-height:100vh;display:flex;flex-direction:column}
 .stripe{height:5px;background:linear-gradient(90deg,#009C3B 0 33%,#FFDF00 33% 66%,#002776 66%)}
 .wrap{max-width:620px;margin:0 auto;padding:36px 20px;flex:1}
-.logo{font-weight:900;font-size:34px;color:var(--yellow)}
-.logo span{color:var(--txt);font-size:15px;letter-spacing:4px}
-h1{font-size:30px;margin:14px 0 8px;line-height:1.2}
+.brand{display:flex;align-items:center;gap:11px}
+.brand img{width:46px;height:46px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.brand-name{font-family:"Space Grotesk",system-ui;font-weight:700;font-size:19px;letter-spacing:.14em;line-height:1.1}
+.brand-name b{display:block;color:var(--yellow);font-size:11px;letter-spacing:.46em}
+h1{font-family:"Space Grotesk",system-ui;font-size:32px;margin:16px 0 8px;line-height:1.2}
 .sub{color:var(--dim);font-size:15px;line-height:1.6}
 .hl{color:var(--yellow);font-weight:800}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:18px}
@@ -36,7 +42,7 @@ small{color:var(--dim);font-size:11px;line-height:1.6;display:block;margin-top:2
 <body>
 <div class="stripe"></div>
 <div class="wrap">
-  <div class="logo">22<span>BET</span></div>
+  <div class="brand"><img src="/icon.svg" alt=""><span class="brand-name">VINTE&nbsp;E&nbsp;DOIS<b>BET</b></span></div>
   <h1>Indique &amp; Ganhe<br><span class="hl">R$ 50,00 no cassino</span> por amigo</h1>
   <div class="sub">Seu amigo cria conta pelo <b>seu link</b> e deposita <b>R$ 100 ou mais</b>. Você recebe, na hora, <span class="hl">R$ 50,00 de bônus pra jogar na roleta e no cassino</span>.</div>
 
