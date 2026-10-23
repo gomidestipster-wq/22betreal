@@ -5,6 +5,7 @@ import json
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime
 
 _UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
        "Accept": "application/json, text/plain, */*", "Referer": "https://www.sofascore.com/"}
@@ -35,7 +36,7 @@ def from_sofascore(ds):
 
 
 def from_thesportsdb(ds):
-    d = _get("https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=" + ds + "&s=Soccer")
+    d = _get("https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=" + ds + "&s=Soccer")
     out = []
     for e in d.get("event") or []:
         home, away = e.get("strHomeTeam"), e.get("strAwayTeam")
@@ -50,10 +51,43 @@ def from_thesportsdb(ds):
     return out
 
 
+def from_espn(ds):
+    d = _get("https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard?dates=" + ds.replace("-", ""))
+    lmap = {str(l.get("id")): (l.get("name") or "") for l in d.get("leagues") or []}
+    lslug = {str(l.get("id")): (l.get("slug") or "") for l in d.get("leagues") or []}
+    out = []
+    for e in d.get("events") or []:
+        comps = (((e.get("competitions") or [{}])[0]).get("competitors") or [])
+        home = away = None
+        for c in comps:
+            t = (c.get("team") or {}).get("displayName")
+            if c.get("homeAway") == "home":
+                home = t
+            elif c.get("homeAway") == "away":
+                away = t
+        if not home or not away:
+            continue
+        lg = e.get("league")
+        if isinstance(lg, dict):
+            lname = lg.get("name") or ""
+            lsl = lg.get("slug") or ""
+        else:
+            lname = lmap.get(str(e.get("leagueId")), "")
+            lsl = lslug.get(str(e.get("leagueId")), "")
+        dt = e.get("date")
+        try:
+            ts = int(datetime.fromisoformat(dt.replace("Z", "+00:00")).timestamp())
+        except Exception:
+            ts = 0
+        out.append({"ext_id": "espn-" + str(e.get("id")), "title": home + " x " + away,
+                    "league": lname or "Futebol", "slug": (lsl or "futebol").lower(), "ts": ts, "source": "ESPN"})
+    return out
+
+
 def fetch_day(ds):
     """Retorna (eventos, fonte, erro)."""
     erros = []
-    for nome, fn in (("SofaScore", from_sofascore), ("TheSportsDB", from_thesportsdb)):
+    for nome, fn in (("ESPN", from_espn), ("SofaScore", from_sofascore), ("TheSportsDB", from_thesportsdb)):
         try:
             evs = fn(ds)
             return evs, nome, None
@@ -62,7 +96,7 @@ def fetch_day(ds):
     return [], None, " | ".join(erros)
 
 
-_XG = [(("brasileirao serie a", "brazil serie a", "brasileir\u00e3o"), (1.50, 1.18)),
+_XG = [ (("brasileirao serie a", "brazil serie a", "brazilian serie a", "brasileir\u00e3o"), (1.50, 1.18)),
        (("copa do brasil",), (1.45, 1.10)),
        (("libertadores",), (1.25, 1.05)),
        (("sudamericana",), (1.15, 1.00)),
