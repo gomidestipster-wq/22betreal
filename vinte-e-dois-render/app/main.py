@@ -39,6 +39,32 @@ from . import pix
 from . import fixtures
 
 Base.metadata.create_all(engine)
+
+def _migrate_cols():
+    """Colunas novas em tabelas antigas (volumes persistidos do Render)."""
+    def cols(t):
+        return {r[1] for r in engine.raw_connection().cursor().execute(f"PRAGMA table_info({t})")}
+    try:
+        b = cols("bets")
+        for c in ("currency",):
+            if c not in b:
+                engine.execute(__import__("sqlalchemy").text(f"ALTER TABLE bets ADD COLUMN {c} VARCHAR(8) DEFAULT 'BRL'"))
+        u = cols("users")
+        for c in ("ref_code", "ref_by", "ref_qualified", "bonus_brl"):
+            if c not in u:
+                engine.execute(__import__("sqlalchemy").text(f"ALTER TABLE users ADD COLUMN {c}" + (" VARCHAR(16)" if c != "bonus_brl" else " INTEGER DEFAULT 0")))
+        e = cols("events")
+        if "ext_id" not in e:
+            engine.execute(__import__("sqlalchemy").text("ALTER TABLE events ADD COLUMN ext_id VARCHAR(32)"))
+        engine.commit()
+    except Exception:
+        try:
+            engine.rollback()
+        except Exception:
+            pass
+
+
+_migrate_cols()
 app = FastAPI(title="Vinte e Dois Bet")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -879,14 +905,18 @@ def admin_approve_withdraw(tid: int, request: Request, db: Session = Depends(get
 @app.get("/api/admin/dashboard")
 def dashboard(request: Request, db: Session = Depends(get_db)):
     require_admin(request)
-    users = db.query(func.count(User.id)).scalar()
-    open_bets = db.query(Bet).filter(Bet.status == "OPEN").all()
-    exposure = sum(b.stake_cents + (b.stake_cents / FX_USDT_BRL if b.currency == "USDT" else 0) for b in open_bets)
-    won = db.query(func.sum(LedgerEntry.amount_cents)).filter(LedgerEntry.kind == "BET_WON").scalar() or 0
-    staked = -db.query(func.sum(LedgerEntry.amount_cents)).filter(LedgerEntry.kind == "BET_PLACED").scalar() or 0
-    rounds = db.query(func.count(GameRound.id)).scalar()
-    return {"usuarios": users, "apostas_abertas": len(open_bets), "exposicao_aberta_brl": round(exposure / 100, 2),
-            "apostado_brl": round(staked / 100, 2), "pago_brl": round(won / 100, 2), "rodadas_crash": rounds}
+    import traceback as _tb
+    try:
+        users = db.query(func.count(User.id)).scalar()
+        open_bets = db.query(Bet).filter(Bet.status == "OPEN").all()
+        exposure = sum(b.stake_cents + (b.stake_cents / FX_USDT_BRL if b.currency == "USDT" else 0) for b in open_bets)
+        won = db.query(func.sum(LedgerEntry.amount_cents)).filter(LedgerEntry.kind == "BET_WON").scalar() or 0
+        staked = -db.query(func.sum(LedgerEntry.amount_cents)).filter(LedgerEntry.kind == "BET_PLACED").scalar() or 0
+        rounds = db.query(func.count(GameRound.id)).scalar()
+        return {"usuarios": users, "apostas_abertas": len(open_bets), "exposicao_aberta_brl": round(exposure / 100, 2),
+                "apostado_brl": round(staked / 100, 2), "pago_brl": round(won / 100, 2), "rodadas_crash": rounds}
+    except Exception as ex:
+        raise HTTPException(500, {"detail": "erro no dashboard: " + str(ex)[:200] + " :: " + _tb.format_exc().replace(chr(10), " | ")[-700:]})
 
 
 @app.post("/api/webhook/pix")
