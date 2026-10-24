@@ -812,7 +812,7 @@ def admin_resolve(mid: int, b: ResolveIn, request: Request, db: Session = Depend
     winner = None
     if b.label is not None:
         if e.kind == "FOOTBALL":
-            st = json.loads(e.state) if e.state else {}
+            st = json.loads(e.state) if e.state else {"sh": 0, "sa": 0, "minute": 0}
             winner = winning_label(m, st)
         else:
             valid = [o.label for o in m.outcomes]
@@ -1000,6 +1000,22 @@ async def admin_db_import(request: Request):
     os.replace(tmp, dst)
     engine.dispose()
     return {"ok": True, "bytes": len(body)}
+
+
+@app.delete("/api/admin/events/{eid}")
+def admin_delete_event(eid: int, request: Request, db: Session = Depends(get_db)):
+    require_admin(request)
+    e = db.get(Event, eid)
+    if not e:
+        raise HTTPException(404, "não existe")
+    mids = [m.id for m in db.query(Market).filter(Market.event_id == eid)]
+    if mids:
+        db.query(Bet).filter(Bet.market_id.in_(mids)).delete(synchronize_session=False)
+        db.query(Outcome).filter(Outcome.market_id.in_(mids)).delete(synchronize_session=False)
+        db.query(Market).filter(Market.event_id == eid).delete(synchronize_session=False)
+    db.delete(e)
+    db.commit()
+    return {"ok": True}
 
 
 app.mount("/", StaticFiles(directory=STATIC, html=True), name="spa")
