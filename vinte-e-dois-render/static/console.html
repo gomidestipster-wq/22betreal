@@ -71,13 +71,14 @@ async function renderMain(){
   <input id="poFair" placeholder="chances (opcional): 0.7,0.3">
   <input id="poMargin" type="number" step="0.01" value="0.12" style="width:80px" title="margem"></div>
   <div class="row"><button class="gold" onclick="createEvent('POLITICS')">criar mercado</button></div></div>
+  <div class="card"><h3>🔴 AO VIVO AGORA — quando o jogo roda, o placar e as odds atualizam sozinhos (sync ESPN a cada ~45s)</h3><div id="liveNow"><div class="msg">…</div></div></div>
   <div id="liveBox"></div>
   <div class="card"><h3>depósitos pendentes (confirma quando o dinheiro bater)</h3><div id="deps"></div></div>
   <div class="card"><h3>saques pendentes</h3><div id="wds"></div></div>
   <div class="card"><h3>resolução manual (política / anomalia)</h3>
   <div class="row"><select id="rsMkt"></select><select id="rsLbl"><option value="">anular (reembolsar)</option></select><button class="red" onclick="resolveMkt()">resolver mercado</button></div>
   <div class="msg">Para futebol use os botões do jogo acima. Aqui resolve mercado político (escolha a opção que venceu) ou anula.</div></div>`;
-  loadLive();loadTxs();loadResolveOptions();
+  loadLive();loadTxs();loadResolveOptions(); initLiveNow();
 }
 async function createEvent(kind){
   try{
@@ -186,6 +187,31 @@ renderLogin();
 <script>
 async function dbExport(){const r=await fetch('/api/admin/db/export');if(!r.ok)return alert('erro '+r.status);const b=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='vd22-db.sqlite3';a.click()}
 async function dbImport(){const f=document.getElementById('dbFile').files[0];if(!f)return alert('escolha o arquivo');if(!confirm('Substituir o banco atual por '+f.name+'?'))return;const buf=await f.arrayBuffer();const r=await fetch('/api/admin/db/import',{method:'POST',body:buf});alert(r.ok?'banco restaurado':'erro '+r.status)}
+</script>
+
+<script>
+function initLiveNow(){ if(!window._lvN){window._lvN=1; setInterval(refreshLiveNow, 8000);} refreshLiveNow() }
+async function refreshLiveNow(){
+  try{
+    const box=document.getElementById("liveNow"); if(!box)return;
+    const d=await api("/api/events?kind=FOOTBALL&status=LIVE");
+    const live=(d.events||[]);
+    if(!live.length){box.innerHTML="<div class='msg'>nenhum jogo rodando agora — assim que apitar, ele aparece aqui e as odds passam a ajustar sozinhas (gol, tempo, fim de jogo)</div>";return}
+    let html="";
+    for(const e of live){
+      const det=await api("/api/events/"+e.id);
+      const st=det.state||{minute:0,sh:0,sa:0};
+      const mk=(det.markets||[]).find(m=>m.key==="1X2");
+      const od=mk?("CASA "+mk.outcomes.find(o=>o.label==="H").odd+" · EMP "+mk.outcomes.find(o=>o.label==="D").odd+" · FORA "+mk.outcomes.find(o=>o.label==="A").odd):"";
+      html+=`<div class="row" style="align-items:center;flex-wrap:wrap"><b>${det.title}</b> <span class="min">${st.sh} × ${st.sa} · min ${st.minute}</span> <span class="expo">${od}</span>
+      <button class="gold" onclick="selEv=${e.id};act('golH')">⚽ CASA</button>
+      <button class="gold" onclick="selEv=${e.id};act('golA')">⚽ FORA</button>
+      <button onclick="selEv=${e.id};act('+15')">+15'</button>
+      <button class="red" onclick="if(confirm('Encerrar e liquidar?')){selEv=${e.id};act('ft')}">🏁 FIM</button></div>`;
+    }
+    box.innerHTML=html;
+  }catch(err){}
+}
 </script>
 
 </body>
