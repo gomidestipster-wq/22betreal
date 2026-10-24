@@ -669,6 +669,7 @@ def _bootstrap_sync():
 def _bootstrap_kickoff():
     import threading
     threading.Thread(target=_bootstrap_sync, daemon=True).start()
+    threading.Thread(target=_live_sync_loop, daemon=True).start()
 
 
 class SyncIn(BaseModel):
@@ -825,30 +826,83 @@ def admin_resolve(mid: int, b: ResolveIn, request: Request, db: Session = Depend
     return {"ok": True}
 
 
+def _apply_live(db: Session, e: Event, st: dict):
+    """Aplica novo estado ao jogo (monotônico) e repricing ou liquida."""
+    old = json.loads(e.state) if e.state else {"minute": 0, "sh": 0, "sa": 0}
+    if st["sh"] < old["sh"] or st["sa"] < old["sa"] or st["minute"] < old["minute"]:
+        return None
+    e.state = json.dumps(st)
+    done = st["minute"] >= 90
+    e.status = "FINISHED" if done else "LIVE"
+    db.commit()
+    moves = []
+    for mkt in db.query(Market).filter(Market.event_id == e.id).all():
+        if mkt.status == "OPEN":
+            if done:
+                settle_market(db, e, mkt, winning_label(mkt, st) if mkt.key != "WINNER" else None)
+            else:
+                moves += reprice_market(db, e, mkt)
+    return {"event_id": e.id, "state": st, "finished": done, "moves": moves}
+
+
+def _live_sync_once():
+    """Sync ao vivo: puxa o placar real (ESPN) e ajusta odds sozinho."""
+    from . import fixtures as fx
+    d = SessionLocal()
+    moved = []
+    try:
+        now = utcnow()
+        evs = d.query(Event).filter(Event.kind == "FOOTBALL", Event.status != "FINISHED",
+                                    Event.ext_id.like("espn-%"),
+                                    Event.starts_at >= now - timedelta(hours=3),
+                                    Event.starts_at <= now + timedelta(minutes=10)).all()
+        by_ext = {e.ext_id: e for e in evs}
+        for ds in {e.starts_at.strftime("%Y-%m-%d") for e in evs}:
+            try:
+                board = fx.espn_board(ds)
+            except Exception as ex:
+                print(f"[live] board {ds}: {type(ex).__name__} {str(ex)[:100]}", flush=True)
+                continue
+            for be in board.get("events") or []:
+                e = by_ext.get("espn-" + str(be.get("id")))
+                if not e:
+                    continue
+                ls = fx.espn_live_state(be)
+                if not ls or (ls["minute"] < 1 and ls["sh"] + ls["sa"] == 0):
+                    continue
+                old = json.loads(e.state) if e.state else {"minute": 0, "sh": 0, "sa": 0}
+                if (ls["sh"], ls["sa"], ls["minute"]) == (old["sh"], old["sa"], old["minute"]):
+                    continue
+                res = _apply_live(d, e, ls)
+                if res and (res["moves"] or res["finished"]):
+                    moved.append((e.title, f"{ls['sh']}x{ls['sa']} min{ls['minute']}", len(res["moves"])))
+        if moved:
+            print("[live] ajustes:", moved, flush=True)
+    finally:
+        d.close()
+
+
+def _live_sync_loop():
+    import time as _t
+    _t.sleep(20)
+    while True:
+        try:
+            _live_sync_once()
+        except Exception as ex:
+            print("[live] ciclo:", type(ex).__name__, str(ex)[:120], flush=True)
+        _t.sleep(45)
+
+
 @app.post("/api/live/{eid}")
 def live_state(eid: int, b: LiveIn, request: Request, db: Session = Depends(get_db)):
     require_admin(request)
     e = db.get(Event, eid)
     if not e:
         raise HTTPException(404, "não existe")
-    old = json.loads(e.state) if e.state else {"minute": 0, "sh": 0, "sa": 0}
-    if b.sh < old["sh"] or b.sa < old["sa"] or b.minute < old["minute"]:
+    res = _apply_live(db, e, {"minute": b.minute, "sh": b.sh, "sa": b.sa})
+    if res is None:
         raise HTTPException(400, "estado inconsistente")
-    st = {"minute": b.minute, "sh": b.sh, "sa": b.sa}
-    e.state = json.dumps(st)
-    e.status = "LIVE"
-    done = b.minute >= 90
-    if done:
-        e.status = "FINISHED"
-    db.commit()
-    moves = []
-    for m in db.query(Market).filter(Market.event_id == eid).all():
-        if m.status == "OPEN":
-            if done:
-                settle_market(db, e, m, winning_label(m, st) if m.key != "WINNER" else None)
-            else:
-                moves += reprice_market(db, e, m)
-    return {"event_id": eid, "state": st, "finished": done, "moves": moves}
+    return res
 
 
 @app.get("/api/admin/deposits")
