@@ -2,6 +2,7 @@
 Cada fonte devolve lista de dicts: ext_id, title, league, slug, ts (epoch s), source."""
 import gzip
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -119,3 +120,43 @@ def xg_for(slug="", league="", ext_id=""):
             break
     j = (sum(ord(c) for c in str(ext_id)) % 7 - 3) * 0.02
     return round(base[0] + j, 2), round(base[1] + j * 0.5, 2)
+
+
+def espn_board(ds):
+    """Placar bruto do dia na ESPN (fonte do sync ao vivo)."""
+    return _get("https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard?dates=" + ds.replace("-", ""))
+
+
+def espn_live_state(be):
+    """Extrai {sh, sa, minute} de um evento do scoreboard ESPN."""
+    comp = (be.get("competitions") or [{}])[0]
+    sh = sa = None
+    for c in comp.get("competitors") or []:
+        if c.get("homeAway") == "home":
+            sh = c.get("score")
+        elif c.get("homeAway") == "away":
+            sa = c.get("score")
+    if sh is None or sa is None:
+        return None
+    sb = comp.get("status") or {}
+    t = sb.get("type") or {}
+    clock = (sb.get("displayClock") or "").strip()
+    sd = ((t.get("shortDetail") or "") + " " + (t.get("detail") or "")).upper()
+    if t.get("completed") or "FINAL" in sd:
+        minute = 95
+    elif clock.upper().startswith("HT"):
+        minute = 45
+    elif clock.upper().startswith("ET"):
+        minute = 90
+    else:
+        if t.get("state") == "pre" or "SCHEDULED" in sd:
+            minute = 0
+        else:
+            mnum = re.match(r"(\d+)\s*\+?", clock.upper())
+            if mnum:
+                minute = min(94, max(0, int(mnum.group(1)) + (1 if "+" in clock else 0)))
+            elif "1H" in sd or "2H" in sd or "IN PROGRESS" in sd:
+                minute = 1
+            else:
+                minute = 0
+    return {"sh": int(sh), "sa": int(sa), "minute": minute}
